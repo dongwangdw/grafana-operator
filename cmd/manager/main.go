@@ -17,8 +17,10 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
+	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
+	"github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -52,7 +54,9 @@ func printVersion() {
 }
 
 func init() {
+	pflag.CommandLine.AddFlagSet(zap.FlagSet())
 	flagset := flag.CommandLine
+	pflag.CommandLine.AddGoFlagSet(flagset)
 	flagset.StringVar(&flagImage, "grafana-image", "", "Overrides the default Grafana image")
 	flagset.StringVar(&flagImageTag, "grafana-image-tag", "", "Overrides the default Grafana image tag")
 	flagset.StringVar(&flagPluginsInitContainerImage, "grafana-plugins-init-container-image", "", "Overrides the default Grafana Plugins Init Container image")
@@ -60,7 +64,7 @@ func init() {
 	flagset.StringVar(&flagNamespaces, "namespaces", "", "Namespaces to scope the interaction of the Grafana operator. Mutually exclusive with --scan-all")
 	flagset.StringVar(&flagJsonnetLocation, "jsonnet-location", "", "Overrides the base path of the jsonnet libraries")
 	flagset.BoolVar(&scanAll, "scan-all", false, "Scans all namespaces for dashboards")
-	flagset.Parse(os.Args[1:])
+	pflag.Parse()
 }
 
 // Starts a separate controller for the dashboard reconciliation in the background
@@ -113,7 +117,6 @@ func main() {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	logf.SetLogger(logf.ZapLogger(false))
 
 	printVersion()
 

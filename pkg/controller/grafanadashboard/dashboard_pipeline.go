@@ -6,17 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-logr/logr"
-	"github.com/google/go-jsonnet"
-	"github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
-	"github.com/integr8ly/grafana-operator/v3/pkg/controller/config"
 	"io/ioutil"
-	corev1 "k8s.io/api/core/v1"
 	"net/http"
 	"net/url"
+	"strings"
+
+	"github.com/go-logr/logr"
+	"github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"strings"
 )
 
 type SourceType int
@@ -242,7 +241,7 @@ func (r *DashboardPipelineImpl) resolveDatasources() error {
 	for _, input := range r.Dashboard.Spec.Datasources {
 		if input.DatasourceName == "" || input.InputName == "" {
 			msg := fmt.Sprintf("invalid datasource input rule, input or datasource empty")
-			r.Logger.Info(msg)
+			r.Logger.Error(errors.New(msg), "")
 			return errors.New(msg)
 		}
 

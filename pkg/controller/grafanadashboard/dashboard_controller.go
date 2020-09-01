@@ -4,6 +4,8 @@ import (
 	"context"
 	defaultErrors "errors"
 	"fmt"
+	"time"
+
 	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
 	"github.com/integr8ly/grafana-operator/v3/pkg/controller/common"
 	"github.com/integr8ly/grafana-operator/v3/pkg/controller/config"
@@ -20,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"time"
 )
 
 const (
@@ -112,7 +113,7 @@ type ReconcileGrafanaDashboard struct {
 func (r *ReconcileGrafanaDashboard) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// If Grafana is not running there is no need to continue
 	if r.state.GrafanaReady == false {
-		log.Info("no grafana instance available")
+		log.V(1).Info("no grafana instance available")
 		return reconcile.Result{Requeue: false}, nil
 	}
 
@@ -148,8 +149,7 @@ func (r *ReconcileGrafanaDashboard) Reconcile(request reconcile.Request) (reconc
 	// If the dashboard does not match the label selectors then we ignore it
 	cr := instance.DeepCopy()
 	if !r.isMatch(cr) {
-		log.Info(fmt.Sprintf("dashboard %v/%v found but selectors do not match",
-			cr.Namespace, cr.Name))
+		log.V(1).Info("selectors does not match", "namespace", cr.Namespace, "Name", cr.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -224,8 +224,8 @@ func (r *ReconcileGrafanaDashboard) reconcileDashboards(request reconcile.Reques
 	for _, dashboard := range namespaceDashboards.Items {
 		// Is this a dashboard we care about (matches the label selectors)?
 		if !r.isMatch(&dashboard) {
-			log.Info(fmt.Sprintf("dashboard %v/%v found but selectors do not match",
-				dashboard.Namespace, dashboard.Name))
+			log.V(1).Info("dashboard selector does not match", "namespace"
+				dashboard.Namespace, "name", dashboard.Name))
 			continue
 		}
 
@@ -236,7 +236,7 @@ func (r *ReconcileGrafanaDashboard) reconcileDashboards(request reconcile.Reques
 		processed, err := pipeline.ProcessDashboard(knownHash)
 
 		if err != nil {
-			log.Error(err, fmt.Sprintf("cannot process dashboard %v/%v", dashboard.Namespace, dashboard.Name))
+			log.Error(err, "cannot process dashboard", "namespace", dashboard.Namespace, "name", dashboard.Name))
 			r.manageError(&dashboard, err)
 			continue
 		}
@@ -254,14 +254,14 @@ func (r *ReconcileGrafanaDashboard) reconcileDashboards(request reconcile.Reques
 			}
 
 			if matchesNamespaceLabels == false {
-				log.Info(fmt.Sprintf("dashboard %v skipped because the namespace labels do not match", dashboard.Name))
+				log.V(1).Info("dashboard skipped because the namespace labels do not match", "name", dashboard.Name))
 				continue
 			}
 		}
 
 		folder, err := grafanaClient.GetOrCreateNamespaceFolder(dashboard.Namespace)
 		if err != nil {
-			log.Error(err, "failed to get or create namespace folder %v for dashboard %v with error %v", request.Namespace, request.Name)
+			log.Error(err, "failed to get or create namespace folder", "namespace", dashboard.Namespace, "name", dashboard.Name))
 			r.manageError(&dashboard, err)
 			continue
 		}
@@ -285,12 +285,9 @@ func (r *ReconcileGrafanaDashboard) reconcileDashboards(request reconcile.Reques
 	for _, dashboard := range dashboardsToDelete {
 		status, err := grafanaClient.DeleteDashboardByUID(dashboard.UID)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("error deleting dashboard %v, status was %v/%v",
-				dashboard.UID,
-				*status.Status,
-				*status.Message))
+			log.Error(err, "fail deleting dashboard", "UID", dashboard.UID, "Status", *status.Status, "Message", *status.Message)
 		}
-		log.Info(fmt.Sprintf("delete result was %v", *status.Message))
+		log.Info("dashboard deleted", "status", *status.Message))
 		r.config.RemovePluginsFor(dashboard.Namespace, dashboard.Name)
 		r.config.RemoveDashboard(dashboard.Namespace, dashboard.Name)
 	}
@@ -304,11 +301,10 @@ func (r *ReconcileGrafanaDashboard) reconcileDashboards(request reconcile.Reques
 // Handle success case: update dashboard metadata (id, uid) and update the list
 // of plugins
 func (r *ReconcileGrafanaDashboard) manageSuccess(dashboard *grafanav1alpha1.GrafanaDashboard) {
-	msg := fmt.Sprintf("dashboard %v/%v successfully submitted",
-		dashboard.Namespace,
-		dashboard.Name)
 	r.recorder.Event(dashboard, "Normal", "Success", msg)
-	log.Info(msg)
+	log.Info("dashboard successfully submitted",
+		"Namespace" dashboard.Namespace,
+		"Name", dashboard.Name)
 	r.config.AddDashboard(dashboard)
 	r.config.SetPluginsFor(dashboard)
 }
@@ -353,9 +349,7 @@ func (r *ReconcileGrafanaDashboard) isMatch(item *grafanav1alpha1.GrafanaDashboa
 
 	match, err := item.MatchesSelectors(r.state.DashboardSelectors)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("error matching selectors against %v/%v",
-			item.Namespace,
-			item.Name))
+		log.Error(err, "error matching selectors against", "Namespace", item.Namespace, "Name", item.Name)
 		return false
 	}
 	return match

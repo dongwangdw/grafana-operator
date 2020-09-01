@@ -3,12 +3,17 @@ package grafanadatasource
 import (
 	"context"
 	"crypto/sha256"
+	stdErrors "errors"
 	"fmt"
+
+	"io"
+	"sort"
+	"time"
+
 	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
 	"github.com/integr8ly/grafana-operator/v3/pkg/controller/common"
 	"github.com/integr8ly/grafana-operator/v3/pkg/controller/config"
 	"github.com/integr8ly/grafana-operator/v3/pkg/controller/model"
-	"io"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,8 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"sort"
-	"time"
 )
 
 const (
@@ -126,7 +129,7 @@ func (r *ReconcileGrafanaDataSource) Reconcile(request reconcile.Request) (recon
 	}
 
 	if currentState.KnownDataSources == nil {
-		log.Info(fmt.Sprintf("no datasources configmap found"))
+		log.Error(stdErrors.New("no datasources configmap found"), "")
 		return reconcile.Result{Requeue: false}, nil
 	}
 
@@ -269,9 +272,10 @@ func (r *ReconcileGrafanaDataSource) manageError(datasource *grafanav1alpha1.Gra
 // is updated
 func (r *ReconcileGrafanaDataSource) manageSuccess(datasources []grafanav1alpha1.GrafanaDataSource) {
 	for _, datasource := range datasources {
-		log.Info(fmt.Sprintf("datasource %v/%v successfully imported",
+		log.Info("datasource successfully imported", "Namespace",
 			datasource.Namespace,
-			datasource.Name))
+			"Name",
+			datasource.Name)
 
 		datasource.Status.Phase = grafanav1alpha1.PhaseReconciling
 		datasource.Status.Message = "success"

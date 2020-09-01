@@ -99,7 +99,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler, autodetectChannel chan sch
 			// Watch routes if they exist on the cluster
 			if gvk.String() == routev1.SchemeGroupVersion.WithKind(common.RouteKind).String() {
 				if err = watchSecondaryResource(c, &routev1.Route{}); err != nil {
-					log.Error(err, fmt.Sprintf("error adding secondary watch for %v", common.RouteKind))
+					log.Error(err, "error adding secondary watch for kind:", common.RouteKind)
 				} else {
 					cfg.AddConfigItem(config.ConfigRouteWatch, true)
 					log.Info(fmt.Sprintf("added secondary watch for %v", common.RouteKind))

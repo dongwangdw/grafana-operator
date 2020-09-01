@@ -133,6 +133,7 @@ func (c *ControllerConfig) GetDashboards(namespace string) []*v1alpha1.GrafanaDa
 	defer c.Unlock()
 	// Cluster level?
 	if namespace == "" {
+		log.V(1).Info("without wamespace specfied, it is cluster level now.")
 		var dashboards []*v1alpha1.GrafanaDashboardRef
 		for _, v := range c.Dashboards {
 			dashboards = append(dashboards, v...)

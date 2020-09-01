@@ -70,7 +70,7 @@ func (i *ClusterActionRunner) RunAll(desiredState DesiredClusterState) error {
 	for index, action := range desiredState {
 		msg, err := action.Run(i)
 		if err != nil {
-			i.log.Info(fmt.Sprintf("(%5d) %10s %s", index, "FAILED", msg))
+			i.log.Error(err, "fail to run", "action", action)
 			return err
 		}
 		i.log.Info(fmt.Sprintf("(%5d) %10s %s", index, "SUCCESS", msg))
